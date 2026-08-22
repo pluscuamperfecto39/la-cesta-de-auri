@@ -1,6 +1,6 @@
-LA CESTA DE AURI · versión 1.9.2
+LA CESTA DE AURI · versión 1.9.3
 
-1. Comparte el archivo La-Cesta-de-Auri-v1.9.2.apk con el móvil.
+1. Comparte el archivo La-Cesta-de-Auri-v1.9.3.apk con el móvil.
 2. Ábrelo desde el gestor de archivos.
 3. Si Android lo solicita, permite «Instalar aplicaciones desconocidas» para esa fuente.
 4. Pulsa «Instalar».
@@ -9,6 +9,7 @@ LA CESTA DE AURI · versión 1.9.2
 La app funciona sin internet y guarda los datos solamente en el teléfono.
 
 PARA VER O CAMBIAR LA FOTO DE UN PRODUCTO
+Después de hacerla, revisa la imagen y elige «Usar», «Repetir» o «Cancelar».
 Toca la miniatura para verla ampliada. En la vista previa puedes pulsar
 «Cambiar foto» si quieres volver a abrir la cámara.
 

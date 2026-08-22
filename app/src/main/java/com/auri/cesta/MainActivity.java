@@ -826,20 +826,8 @@ public class MainActivity extends Activity {
                 }
             }
             if (captured.length() > 0) {
-                List<DataStore.BasketItem> all = store.getBasket();
-                for (DataStore.BasketItem saved : all) {
-                    if (saved.id == itemId) {
-                        String previousPhoto = saved.photoPath;
-                        saved.photoPath = captured.getAbsolutePath();
-                        store.saveBasket(all);
-                        if (previousPhoto != null && !previousPhoto.equals(saved.photoPath)) {
-                            deleteProductPhoto(previousPhoto);
-                        }
-                        Toast.makeText(this, "Foto guardada en la cesta", Toast.LENGTH_SHORT).show();
-                        renderHomeInPlace();
-                        return;
-                    }
-                }
+                showCapturedPhotoReview(itemId, captured);
+                return;
             }
         }
 
@@ -847,6 +835,93 @@ public class MainActivity extends Activity {
         if (resultCode == RESULT_OK) {
             Toast.makeText(this, "No se pudo guardar la foto", Toast.LENGTH_LONG).show();
         }
+        renderHomeInPlace();
+    }
+
+    private void showCapturedPhotoReview(long itemId, File captured) {
+        DataStore.BasketItem item = null;
+        for (DataStore.BasketItem candidate : store.getBasket()) {
+            if (candidate.id == itemId) {
+                item = candidate;
+                break;
+            }
+        }
+        if (item == null) {
+            captured.delete();
+            Toast.makeText(this, "El producto ya no está en la cesta", Toast.LENGTH_LONG).show();
+            renderHomeInPlace();
+            return;
+        }
+
+        Bitmap previewBitmap = loadThumbnail(
+                captured,
+                Math.max(320, getResources().getConfiguration().screenWidthDp - 48)
+        );
+        if (previewBitmap == null) {
+            captured.delete();
+            Toast.makeText(this, "No se pudo abrir la foto", Toast.LENGTH_LONG).show();
+            renderHomeInPlace();
+            return;
+        }
+
+        ImageView preview = new ImageView(this);
+        preview.setImageBitmap(previewBitmap);
+        preview.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        preview.setAdjustViewBounds(true);
+        preview.setMinimumHeight(dp(220));
+        preview.setMaxHeight(dp(380));
+        preview.setBackground(round(Color.rgb(28, 21, 33), 18));
+        preview.setClipToOutline(true);
+        preview.setContentDescription(getString(R.string.captured_photo_preview, item.name));
+
+        LinearLayout holder = new LinearLayout(this);
+        holder.setPadding(dp(18), dp(4), dp(18), 0);
+        holder.addView(preview, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+        ));
+
+        DataStore.BasketItem reviewedItem = item;
+        AlertDialog review = new AlertDialog.Builder(this)
+                .setTitle(R.string.review_product_photo)
+                .setMessage(R.string.review_product_photo_message)
+                .setView(holder)
+                .setNeutralButton(R.string.cancel_photo, (dialog, which) -> {
+                    captured.delete();
+                    renderHomeInPlace();
+                })
+                .setNegativeButton(R.string.retake_product_photo, (dialog, which) -> {
+                    captured.delete();
+                    dialog.dismiss();
+                    content.postDelayed(() -> takeProductPhoto(reviewedItem), 350L);
+                })
+                .setPositiveButton(R.string.use_product_photo, (dialog, which) ->
+                        saveCapturedProductPhoto(itemId, captured))
+                .create();
+        review.setOnCancelListener(dialog -> {
+            captured.delete();
+            renderHomeInPlace();
+        });
+        review.show();
+    }
+
+    private void saveCapturedProductPhoto(long itemId, File captured) {
+        List<DataStore.BasketItem> all = store.getBasket();
+        for (DataStore.BasketItem saved : all) {
+            if (saved.id == itemId) {
+                String previousPhoto = saved.photoPath;
+                saved.photoPath = captured.getAbsolutePath();
+                store.saveBasket(all);
+                if (previousPhoto != null && !previousPhoto.equals(saved.photoPath)) {
+                    deleteProductPhoto(previousPhoto);
+                }
+                Toast.makeText(this, "Foto guardada en la cesta", Toast.LENGTH_SHORT).show();
+                renderHomeInPlace();
+                return;
+            }
+        }
+        captured.delete();
+        Toast.makeText(this, "El producto ya no está en la cesta", Toast.LENGTH_LONG).show();
         renderHomeInPlace();
     }
 

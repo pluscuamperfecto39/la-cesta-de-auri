@@ -7,6 +7,12 @@
     <string name="product_photo_preview">Fotografía ampliada de %1$s</string>
     <string name="change_product_photo">Cambiar foto</string>
     <string name="close_photo">Cerrar</string>
+    <string name="review_product_photo">Revisa la foto</string>
+    <string name="review_product_photo_message">¿Ha quedado bien o quieres repetirla?</string>
+    <string name="captured_photo_preview">Fotografía recién hecha de %1$s</string>
+    <string name="use_product_photo">Usar</string>
+    <string name="retake_product_photo">Repetir</string>
+    <string name="cancel_photo">Cancelar</string>
     <string name="widget_product_photo">Foto del producto</string>
     <string name="notification_channel_name">Recordatorios de compra</string>
     <string name="notification_channel_description">Avisos de tus compras futuras</string>
