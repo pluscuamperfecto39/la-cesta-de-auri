@@ -5,3 +5,11 @@ local.properties
 **/build/
 *.iml
 *.jks
+
+# Xcode / iOS
+DerivedData/
+*.xcuserstate
+xcuserdata/
+*.ipa
+*.dSYM.zip
+*.dSYM

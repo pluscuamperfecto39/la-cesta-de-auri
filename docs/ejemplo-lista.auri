@@ -1,0 +1,19 @@
+{
+  "format": "la-cesta-de-auri",
+  "version": 1,
+  "createdAt": 1787392800000,
+  "items": [
+    {
+      "name": "Tomates",
+      "category": "Fruta y verdura",
+      "quantity": "1 kg",
+      "checked": false
+    },
+    {
+      "name": "Arroz",
+      "category": "Despensa",
+      "quantity": "2 paquetes",
+      "checked": false
+    }
+  ]
+}
