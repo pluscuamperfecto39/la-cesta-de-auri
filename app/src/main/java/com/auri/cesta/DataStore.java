@@ -20,10 +20,12 @@ public final class DataStore {
     private static final String KEY_FUTURE = "future";
     private static final String KEY_FREQUENT = "frequent";
 
+    private final Context appContext;
     private final SharedPreferences prefs;
 
     public DataStore(Context context) {
-        prefs = context.getApplicationContext().getSharedPreferences(PREFS, Context.MODE_PRIVATE);
+        appContext = context.getApplicationContext();
+        prefs = appContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
     }
 
     public static final class BasketItem {
@@ -106,6 +108,7 @@ public final class DataStore {
             }
         }
         prefs.edit().putString(KEY_BASKET, array.toString()).apply();
+        BasketWidgetProvider.refreshAll(appContext);
     }
 
     public void addBasketItem(String name, String category, String quantity) {

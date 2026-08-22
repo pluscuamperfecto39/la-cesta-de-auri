@@ -3,4 +3,11 @@
     <color name="auri_plum">#683499</color>
     <color name="auri_cream">#E8F5FB</color>
     <color name="white">#FFFFFF</color>
+    <color name="auri_plum_dark">#3E185C</color>
+    <color name="auri_lavender">#DABEED</color>
+    <color name="auri_surface">#F8FDFF</color>
+    <color name="auri_nav_blue">#D3EBF6</color>
+    <color name="auri_ink">#34263D</color>
+    <color name="auri_muted">#7A6982</color>
+    <color name="auri_line">#CCE0EA</color>
 </resources>

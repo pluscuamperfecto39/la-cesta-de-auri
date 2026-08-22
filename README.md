@@ -8,13 +8,21 @@ Aplicación de lista de la compra para Android y iPhone, creada para funcionar s
 - Productos frecuentes aprendidos automáticamente al completar compras.
 - Lista «Tengo que comprar» con fecha, hora y notificación opcional.
 - Recuperación de recordatorios después de reiniciar el móvil.
+- Widget redimensionable para consultar la cesta desde la pantalla de inicio.
 - Envío de la cesta como texto mediante WhatsApp, correo u otras aplicaciones.
 - Exportación de listas `.auri` para compartirlas entre Android y iPhone.
 - Datos guardados únicamente en el dispositivo.
 
 ## Instalar el APK
 
-El archivo terminado está en `dist/La-Cesta-de-Auri-v1.5.0.apk`. En el móvil, abre el archivo y autoriza temporalmente la instalación desde esa fuente si Android lo solicita. En Android 13 o posterior, acepta el permiso de notificaciones para recibir recordatorios.
+El archivo terminado está en `dist/La-Cesta-de-Auri-v1.6.0.apk`. En el móvil, abre el archivo y autoriza temporalmente la instalación desde esa fuente si Android lo solicita. En Android 13 o posterior, acepta el permiso de notificaciones para recibir recordatorios.
+
+## Añadir el widget en Android
+
+Mantén pulsado un espacio vacío de la pantalla de inicio, entra en **Widgets**, busca
+**La Cesta de Auri** y arrastra **Mi cesta de Auri** al escritorio. El widget muestra
+la lista, el número de productos pendientes y los ya comprados. Al tocarlo se abre
+la cesta en la aplicación.
 
 ## Proyectos
 
@@ -23,7 +31,7 @@ El archivo terminado está en `dist/La-Cesta-de-Auri-v1.5.0.apk`. En el móvil, 
 - Paquete: `com.auri.cesta`
 - Android mínimo: 6.0 (API 23)
 - Android objetivo: API 36
-- Versión: 1.5.0
+- Versión: 1.6.0
 - Lenguaje: Java, sin servicios externos
 
 Se incluye Gradle Wrapper para abrir y compilar el proyecto con Android Studio o desde terminal.
