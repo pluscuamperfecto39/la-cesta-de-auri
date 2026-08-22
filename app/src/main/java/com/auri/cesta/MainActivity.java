@@ -650,6 +650,7 @@ public class MainActivity extends Activity {
             } catch (Exception ignored) {
             }
         }
+        message.append("\nAbre el archivo .auri con La Cesta de Auri en Android o iPhone.");
         try {
             document.put("format", "la-cesta-de-auri");
             document.put("version", 1);
@@ -667,12 +668,12 @@ public class MainActivity extends Activity {
             Uri uri = ShareListProvider.uriForFile(this, file);
             Intent share = new Intent(Intent.ACTION_SEND);
             share.setType(ShareListProvider.MIME_TYPE);
-            share.putExtra(Intent.EXTRA_SUBJECT, "Lista de La Cesta de Auri");
+            share.putExtra(Intent.EXTRA_SUBJECT, "Lista compatible de La Cesta de Auri");
             share.putExtra(Intent.EXTRA_TEXT, message.toString());
             share.putExtra(Intent.EXTRA_STREAM, uri);
             share.setClipData(ClipData.newUri(getContentResolver(), "Lista de la compra", uri));
             share.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-            startActivity(Intent.createChooser(share, "Compartir lista para importar"));
+            startActivity(Intent.createChooser(share, "Compartir con Android o iPhone"));
         } catch (Exception exception) {
             Toast.makeText(this, "No se pudo crear el archivo de la lista", Toast.LENGTH_LONG).show();
         }
@@ -735,7 +736,7 @@ public class MainActivity extends Activity {
         for (int i = 0; i < shown; i++) preview.append("\n• ").append(imported.get(i).name);
         if (imported.size() > shown) preview.append("\n• …y ").append(imported.size() - shown).append(" más");
         new AlertDialog.Builder(this)
-                .setTitle("Importar lista compartida")
+                .setTitle("Importar lista de Android o iPhone")
                 .setMessage("Se añadirán " + imported.size() + (imported.size() == 1 ? " producto" : " productos") +
                         " a tu cesta:" + preview)
                 .setNegativeButton("Cancelar", null)
