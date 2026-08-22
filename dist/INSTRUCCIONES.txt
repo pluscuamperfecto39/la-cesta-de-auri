@@ -1,0 +1,12 @@
+LA CESTA DE AURI · versión 1.4.0
+
+1. Comparte el archivo La-Cesta-de-Auri-v1.4.0.apk con el móvil.
+2. Ábrelo desde el gestor de archivos.
+3. Si Android lo solicita, permite «Instalar aplicaciones desconocidas» para esa fuente.
+4. Pulsa «Instalar».
+5. Al crear un recordatorio, permite las notificaciones para recibir el aviso.
+
+La app funciona sin internet y guarda los datos solamente en el teléfono.
+
+PARA COMPARTIR UNA LISTA
+Pulsa «Compartir archivo». La otra persona debe tener instalada la app y abrir el archivo .auri recibido. También puede usar «Importar» dentro de la cesta.
