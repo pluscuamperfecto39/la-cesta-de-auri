@@ -15,17 +15,16 @@
         android:orientation="horizontal">
 
         <ImageView
-            android:layout_width="38dp"
-            android:layout_height="38dp"
-            android:background="@drawable/widget_icon_background"
-            android:contentDescription="@string/app_name"
-            android:padding="7dp"
-            android:src="@drawable/ic_launcher" />
+            android:layout_width="52dp"
+            android:layout_height="58dp"
+            android:contentDescription="@string/character_description"
+            android:scaleType="centerInside"
+            android:src="@drawable/auri_queen_cutout" />
 
         <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginStart="10dp"
+            android:layout_marginStart="7dp"
             android:layout_weight="1"
             android:orientation="vertical">
 

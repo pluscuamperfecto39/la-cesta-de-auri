@@ -29,6 +29,7 @@ import android.widget.CheckBox;
 import android.widget.DatePicker;
 import android.widget.EditText;
 import android.widget.FrameLayout;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.ScrollView;
@@ -127,20 +128,22 @@ public class MainActivity extends Activity {
         header.setGravity(Gravity.CENTER_VERTICAL);
         header.setPadding(dp(18), dp(11), dp(18), dp(10));
 
-        TextView mark = text("🧺", 25, Gravity.CENTER, INK, true);
-        mark.setBackground(round(LAVENDER, 18));
-        header.addView(mark, new LinearLayout.LayoutParams(dp(50), dp(50)));
+        ImageView mark = new ImageView(this);
+        mark.setImageResource(R.drawable.auri_queen_cutout);
+        mark.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
+        mark.setContentDescription(getString(R.string.character_description));
+        header.addView(mark, new LinearLayout.LayoutParams(dp(66), dp(70)));
 
         LinearLayout brand = new LinearLayout(this);
         brand.setOrientation(LinearLayout.VERTICAL);
-        brand.setPadding(dp(12), 0, 0, 0);
+        brand.setPadding(dp(8), 0, 0, 0);
         TextView name = text("La Cesta de Auri", 23, Gravity.START, PURPLE, false);
         name.setTypeface(Typeface.create("cursive", Typeface.BOLD_ITALIC));
         name.setLetterSpacing(0.01f);
         brand.addView(name);
         brand.addView(text("Compra con calma, recuerda con cariño", 12, Gravity.START, MUTED, false));
         header.addView(brand, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
-        root.addView(header, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(78)));
+        root.addView(header, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(90)));
 
         content = new FrameLayout(this);
         root.addView(content, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));

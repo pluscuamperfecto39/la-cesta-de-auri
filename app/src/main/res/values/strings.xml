@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">La Cesta de Auri</string>
+    <string name="character_description">Auri, Reina de Corazones</string>
     <string name="notification_channel_name">Recordatorios de compra</string>
     <string name="notification_channel_description">Avisos de tus compras futuras</string>
     <string name="default_quantity">1 ud.</string>
