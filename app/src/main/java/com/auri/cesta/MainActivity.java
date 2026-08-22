@@ -11,12 +11,15 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.res.ColorStateList;
 import android.graphics.Color;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Paint;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Build;
 import android.os.Bundle;
 import android.net.Uri;
+import android.provider.MediaStore;
 import android.text.InputType;
 import android.view.Gravity;
 import android.view.View;
@@ -58,6 +61,9 @@ import java.util.Locale;
 
 public class MainActivity extends Activity {
     private static final int REQUEST_IMPORT_LIST = 405;
+    private static final int REQUEST_TAKE_PRODUCT_PHOTO = 406;
+    private static final String STATE_PHOTO_ITEM_ID = "photo_item_id";
+    private static final String STATE_PHOTO_PATH = "photo_path";
     private static final int PURPLE = Color.rgb(104, 52, 153);
     private static final int PURPLE_DARK = Color.rgb(62, 24, 92);
     private static final int CREAM = Color.rgb(232, 245, 251);
@@ -81,10 +87,17 @@ public class MainActivity extends Activity {
     private FrameLayout content;
     private final TextView[] navItems = new TextView[3];
     private int currentTab;
+    private long pendingPhotoItemId = -1L;
+    private File pendingPhotoFile;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        if (savedInstanceState != null) {
+            pendingPhotoItemId = savedInstanceState.getLong(STATE_PHOTO_ITEM_ID, -1L);
+            String pendingPath = savedInstanceState.getString(STATE_PHOTO_PATH, "");
+            if (!pendingPath.isEmpty()) pendingPhotoFile = new File(pendingPath);
+        }
         store = new DataStore(this);
         ReminderReceiver.createChannel(this);
         getWindow().setStatusBarColor(CREAM);
@@ -104,9 +117,18 @@ public class MainActivity extends Activity {
     }
 
     @Override
+    protected void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+        outState.putLong(STATE_PHOTO_ITEM_ID, pendingPhotoItemId);
+        if (pendingPhotoFile != null) outState.putString(STATE_PHOTO_PATH, pendingPhotoFile.getAbsolutePath());
+    }
+
+    @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode == REQUEST_IMPORT_LIST && resultCode == RESULT_OK && data != null && data.getData() != null) {
+        if (requestCode == REQUEST_TAKE_PRODUCT_PHOTO) {
+            finishProductPhoto(resultCode, data);
+        } else if (requestCode == REQUEST_IMPORT_LIST && resultCode == RESULT_OK && data != null && data.getData() != null) {
             importListFromUri(data.getData());
         }
     }
@@ -337,6 +359,27 @@ public class MainActivity extends Activity {
         copy.addView(title);
         copy.addView(text(item.quantity + "  ·  " + item.category, 12, Gravity.START, MUTED, false), marginTop(3));
         row.addView(copy, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+
+        File photoFile = validProductPhoto(item.photoPath);
+        View photoButton;
+        if (photoFile != null) {
+            ImageView photo = new ImageView(this);
+            photo.setImageBitmap(loadThumbnail(photoFile, 64));
+            photo.setScaleType(ImageView.ScaleType.CENTER_CROP);
+            photo.setBackground(round(PURPLE_TINT, 12));
+            photo.setClipToOutline(true);
+            photo.setContentDescription(getString(R.string.replace_product_photo, item.name));
+            photoButton = photo;
+        } else {
+            TextView camera = text("📷", 20, Gravity.CENTER, PURPLE_DARK, false);
+            camera.setBackground(round(NAV_BLUE, 13));
+            camera.setContentDescription(getString(R.string.take_product_photo, item.name));
+            photoButton = camera;
+        }
+        photoButton.setOnClickListener(view -> takeProductPhoto(item));
+        LinearLayout.LayoutParams photoParams = new LinearLayout.LayoutParams(dp(50), dp(50));
+        photoParams.leftMargin = dp(6);
+        row.addView(photoButton, photoParams);
 
         TextView remove = text("×", 25, Gravity.CENTER, MUTED, false);
         remove.setContentDescription("Eliminar " + item.name);
@@ -602,7 +645,10 @@ public class MainActivity extends Activity {
     private void removeBasketItem(long id) {
         List<DataStore.BasketItem> all = store.getBasket();
         for (int i = all.size() - 1; i >= 0; i--) {
-            if (all.get(i).id == id) all.remove(i);
+            if (all.get(i).id == id) {
+                deleteProductPhoto(all.get(i).photoPath);
+                all.remove(i);
+            }
         }
         store.saveBasket(all);
         renderHomeInPlace();
@@ -616,7 +662,10 @@ public class MainActivity extends Activity {
                 .setPositiveButton("Limpiar", (dialog, which) -> {
                     List<DataStore.BasketItem> all = store.getBasket();
                     for (int i = all.size() - 1; i >= 0; i--) {
-                        if (all.get(i).checked) all.remove(i);
+                        if (all.get(i).checked) {
+                            deleteProductPhoto(all.get(i).photoPath);
+                            all.remove(i);
+                        }
                     }
                     store.saveBasket(all);
                     renderHomeInPlace();
@@ -697,6 +746,104 @@ public class MainActivity extends Activity {
         } catch (Exception exception) {
             Toast.makeText(this, "No se encontró un gestor de archivos", Toast.LENGTH_LONG).show();
         }
+    }
+
+    private void takeProductPhoto(DataStore.BasketItem item) {
+        File directory = new File(getFilesDir(), "product_photos");
+        try {
+            if (!directory.exists() && !directory.mkdirs()) throw new IOException("No se pudo crear la carpeta");
+            File photo = new File(directory, "product_" + Math.abs(item.id) + "_" + System.currentTimeMillis() + ".jpg");
+            if (!photo.createNewFile()) throw new IOException("No se pudo crear la foto");
+
+            Uri uri = ProductPhotoProvider.uriForFile(this, photo);
+            Intent camera = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+            camera.putExtra(MediaStore.EXTRA_OUTPUT, uri);
+            camera.setClipData(ClipData.newRawUri("Foto del producto", uri));
+            camera.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
+
+            pendingPhotoItemId = item.id;
+            pendingPhotoFile = photo;
+            startActivityForResult(camera, REQUEST_TAKE_PRODUCT_PHOTO);
+        } catch (Exception exception) {
+            if (pendingPhotoFile != null) pendingPhotoFile.delete();
+            pendingPhotoItemId = -1L;
+            pendingPhotoFile = null;
+            Toast.makeText(this, "No se pudo abrir la cámara del móvil", Toast.LENGTH_LONG).show();
+        }
+    }
+
+    private void finishProductPhoto(int resultCode, Intent data) {
+        File captured = pendingPhotoFile;
+        long itemId = pendingPhotoItemId;
+        pendingPhotoFile = null;
+        pendingPhotoItemId = -1L;
+
+        if (resultCode == RESULT_OK && captured != null) {
+            if (captured.length() == 0 && data != null && data.getExtras() != null) {
+                Object preview = data.getExtras().get("data");
+                if (preview instanceof Bitmap) {
+                    try (FileOutputStream output = new FileOutputStream(captured)) {
+                        ((Bitmap) preview).compress(Bitmap.CompressFormat.JPEG, 92, output);
+                    } catch (IOException ignored) {
+                    }
+                }
+            }
+            if (captured.length() > 0) {
+                List<DataStore.BasketItem> all = store.getBasket();
+                for (DataStore.BasketItem saved : all) {
+                    if (saved.id == itemId) {
+                        String previousPhoto = saved.photoPath;
+                        saved.photoPath = captured.getAbsolutePath();
+                        store.saveBasket(all);
+                        if (previousPhoto != null && !previousPhoto.equals(saved.photoPath)) {
+                            deleteProductPhoto(previousPhoto);
+                        }
+                        Toast.makeText(this, "Foto guardada en la cesta", Toast.LENGTH_SHORT).show();
+                        renderHomeInPlace();
+                        return;
+                    }
+                }
+            }
+        }
+
+        if (captured != null) captured.delete();
+        if (resultCode == RESULT_OK) {
+            Toast.makeText(this, "No se pudo guardar la foto", Toast.LENGTH_LONG).show();
+        }
+        renderHomeInPlace();
+    }
+
+    private File validProductPhoto(String path) {
+        if (path == null || path.trim().isEmpty()) return null;
+        try {
+            File base = new File(getFilesDir(), "product_photos").getCanonicalFile();
+            File photo = new File(path).getCanonicalFile();
+            if (photo.getPath().startsWith(base.getPath() + File.separator) && photo.isFile() && photo.length() > 0) {
+                return photo;
+            }
+        } catch (IOException ignored) {
+        }
+        return null;
+    }
+
+    private void deleteProductPhoto(String path) {
+        File photo = validProductPhoto(path);
+        if (photo != null) photo.delete();
+    }
+
+    private Bitmap loadThumbnail(File file, int targetDp) {
+        int targetPixels = dp(targetDp);
+        BitmapFactory.Options bounds = new BitmapFactory.Options();
+        bounds.inJustDecodeBounds = true;
+        BitmapFactory.decodeFile(file.getAbsolutePath(), bounds);
+
+        BitmapFactory.Options options = new BitmapFactory.Options();
+        options.inSampleSize = 1;
+        int largestSide = Math.max(bounds.outWidth, bounds.outHeight);
+        while (largestSide / (options.inSampleSize * 2) >= targetPixels) {
+            options.inSampleSize *= 2;
+        }
+        return BitmapFactory.decodeFile(file.getAbsolutePath(), options);
     }
 
     private void handleIncomingList(Intent intent) {

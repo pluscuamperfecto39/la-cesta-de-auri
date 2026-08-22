@@ -33,6 +33,7 @@ public final class DataStore {
         public String name;
         public String category;
         public String quantity;
+        public String photoPath;
         public boolean checked;
         public boolean counted;
 
@@ -41,6 +42,7 @@ public final class DataStore {
             this.name = name;
             this.category = category;
             this.quantity = quantity;
+            this.photoPath = "";
         }
     }
 
@@ -84,6 +86,7 @@ public final class DataStore {
                 );
                 item.checked = object.optBoolean("checked");
                 item.counted = object.optBoolean("counted");
+                item.photoPath = object.optString("photoPath", "");
                 result.add(item);
             }
         } catch (JSONException ignored) {
@@ -101,6 +104,7 @@ public final class DataStore {
                 object.put("name", item.name);
                 object.put("category", item.category);
                 object.put("quantity", item.quantity);
+                object.put("photoPath", item.photoPath == null ? "" : item.photoPath);
                 object.put("checked", item.checked);
                 object.put("counted", item.counted);
                 array.put(object);

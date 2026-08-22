@@ -5,6 +5,13 @@
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-feature android:name="android.hardware.camera.any" android:required="false" />
+
+    <queries>
+        <intent>
+            <action android:name="android.media.action.IMAGE_CAPTURE" />
+        </intent>
+    </queries>
 
     <application
         android:allowBackup="true"
@@ -31,6 +38,12 @@
         <provider
             android:name=".ShareListProvider"
             android:authorities="${applicationId}.shared"
+            android:exported="false"
+            android:grantUriPermissions="true" />
+
+        <provider
+            android:name=".ProductPhotoProvider"
+            android:authorities="${applicationId}.photos"
             android:exported="false"
             android:grantUriPermissions="true" />
 

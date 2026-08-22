@@ -2,12 +2,16 @@ package com.auri.cesta;
 
 import android.content.Context;
 import android.content.Intent;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.text.SpannableString;
 import android.text.Spanned;
 import android.text.style.StrikethroughSpan;
+import android.view.View;
 import android.widget.RemoteViews;
 import android.widget.RemoteViewsService;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -80,6 +84,13 @@ public final class BasketWidgetService extends RemoteViewsService {
                     context.getColor(item.checked ? R.color.auri_muted : R.color.auri_ink)
             );
             row.setTextViewText(R.id.widget_item_detail, item.quantity + " · " + item.category);
+            Bitmap photo = loadPhoto(item.photoPath);
+            if (photo != null) {
+                row.setViewVisibility(R.id.widget_item_photo, View.VISIBLE);
+                row.setImageViewBitmap(R.id.widget_item_photo, photo);
+            } else {
+                row.setViewVisibility(R.id.widget_item_photo, View.GONE);
+            }
             row.setInt(
                     R.id.widget_item_root,
                     "setBackgroundResource",
@@ -90,9 +101,29 @@ public final class BasketWidgetService extends RemoteViewsService {
             fillIn.putExtra("tab", 0);
             row.setOnClickFillInIntent(R.id.widget_item_root, fillIn);
             row.setOnClickFillInIntent(R.id.widget_item_check, fillIn);
+            row.setOnClickFillInIntent(R.id.widget_item_photo, fillIn);
             row.setOnClickFillInIntent(R.id.widget_item_name, fillIn);
             row.setOnClickFillInIntent(R.id.widget_item_detail, fillIn);
             return row;
+        }
+
+        private Bitmap loadPhoto(String path) {
+            if (path == null || path.isEmpty()) return null;
+            File file = new File(path);
+            if (!file.isFile() || file.length() == 0) return null;
+
+            int targetPixels = Math.round(48 * context.getResources().getDisplayMetrics().density);
+            BitmapFactory.Options bounds = new BitmapFactory.Options();
+            bounds.inJustDecodeBounds = true;
+            BitmapFactory.decodeFile(file.getAbsolutePath(), bounds);
+
+            BitmapFactory.Options options = new BitmapFactory.Options();
+            options.inSampleSize = 1;
+            int largestSide = Math.max(bounds.outWidth, bounds.outHeight);
+            while (largestSide / (options.inSampleSize * 2) >= targetPixels) {
+                options.inSampleSize *= 2;
+            }
+            return BitmapFactory.decodeFile(file.getAbsolutePath(), options);
         }
 
         @Override

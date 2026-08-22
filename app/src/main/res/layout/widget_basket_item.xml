@@ -19,6 +19,15 @@
         android:textSize="23sp"
         android:textStyle="bold" />
 
+    <ImageView
+        android:id="@+id/widget_item_photo"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:layout_marginStart="4dp"
+        android:contentDescription="@string/widget_product_photo"
+        android:scaleType="centerCrop"
+        android:visibility="gone" />
+
     <LinearLayout
         android:layout_width="0dp"
         android:layout_height="wrap_content"
