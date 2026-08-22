@@ -3,7 +3,10 @@
     <string name="app_name">La Cesta de Auri</string>
     <string name="character_description">Auri, Reina de Corazones</string>
     <string name="take_product_photo">Hacer una foto de %1$s</string>
-    <string name="replace_product_photo">Foto de %1$s. Toca para cambiarla</string>
+    <string name="view_product_photo">Foto de %1$s. Toca para verla</string>
+    <string name="product_photo_preview">Fotografía ampliada de %1$s</string>
+    <string name="change_product_photo">Cambiar foto</string>
+    <string name="close_photo">Cerrar</string>
     <string name="widget_product_photo">Foto del producto</string>
     <string name="notification_channel_name">Recordatorios de compra</string>
     <string name="notification_channel_description">Avisos de tus compras futuras</string>

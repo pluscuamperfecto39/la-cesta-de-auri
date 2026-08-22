@@ -368,15 +368,16 @@ public class MainActivity extends Activity {
             photo.setScaleType(ImageView.ScaleType.CENTER_CROP);
             photo.setBackground(round(PURPLE_TINT, 12));
             photo.setClipToOutline(true);
-            photo.setContentDescription(getString(R.string.replace_product_photo, item.name));
+            photo.setContentDescription(getString(R.string.view_product_photo, item.name));
+            photo.setOnClickListener(view -> showProductPhoto(item, photoFile));
             photoButton = photo;
         } else {
             TextView camera = text("📷", 20, Gravity.CENTER, PURPLE_DARK, false);
             camera.setBackground(round(NAV_BLUE, 13));
             camera.setContentDescription(getString(R.string.take_product_photo, item.name));
+            camera.setOnClickListener(view -> takeProductPhoto(item));
             photoButton = camera;
         }
-        photoButton.setOnClickListener(view -> takeProductPhoto(item));
         LinearLayout.LayoutParams photoParams = new LinearLayout.LayoutParams(dp(50), dp(50));
         photoParams.leftMargin = dp(6);
         row.addView(photoButton, photoParams);
@@ -770,6 +771,41 @@ public class MainActivity extends Activity {
             pendingPhotoFile = null;
             Toast.makeText(this, "No se pudo abrir la cámara del móvil", Toast.LENGTH_LONG).show();
         }
+    }
+
+    private void showProductPhoto(DataStore.BasketItem item, File photoFile) {
+        Bitmap previewBitmap = loadThumbnail(
+                photoFile,
+                Math.max(320, getResources().getConfiguration().screenWidthDp - 48)
+        );
+        if (previewBitmap == null) {
+            Toast.makeText(this, "No se pudo abrir la foto", Toast.LENGTH_LONG).show();
+            return;
+        }
+
+        ImageView preview = new ImageView(this);
+        preview.setImageBitmap(previewBitmap);
+        preview.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        preview.setAdjustViewBounds(true);
+        preview.setMinimumHeight(dp(220));
+        preview.setMaxHeight(dp(560));
+        preview.setBackground(round(Color.rgb(28, 21, 33), 18));
+        preview.setClipToOutline(true);
+        preview.setContentDescription(getString(R.string.product_photo_preview, item.name));
+
+        LinearLayout holder = new LinearLayout(this);
+        holder.setPadding(dp(18), dp(4), dp(18), 0);
+        holder.addView(preview, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+        ));
+
+        new AlertDialog.Builder(this)
+                .setTitle(item.name)
+                .setView(holder)
+                .setNegativeButton(R.string.close_photo, null)
+                .setPositiveButton(R.string.change_product_photo, (dialog, which) -> takeProductPhoto(item))
+                .show();
     }
 
     private void finishProductPhoto(int resultCode, Intent data) {
