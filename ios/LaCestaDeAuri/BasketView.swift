@@ -13,6 +13,7 @@ struct BasketView: View {
     @State private var showingClearConfirmation = false
     @State private var cameraItem: BasketItem?
     @State private var cameraError: String?
+    @State private var photoPresentation: ProductPhotoPresentation?
     @FocusState private var productFocused: Bool
 
     private var pending: [BasketItem] {
@@ -40,7 +41,7 @@ struct BasketView: View {
                     listHeader
 
                     ForEach(pending) { item in
-                        BasketRow(item: item, onPhoto: { openCamera(for: $0) })
+                        BasketRow(item: item, onPhoto: { handlePhotoTap(for: $0) })
                     }
 
                     if !purchased.isEmpty {
@@ -53,7 +54,7 @@ struct BasketView: View {
                         .padding(.top, 8)
 
                         ForEach(purchased) { item in
-                            BasketRow(item: item, onPhoto: { openCamera(for: $0) })
+                            BasketRow(item: item, onPhoto: { handlePhotoTap(for: $0) })
                         }
 
                         Button("Limpiar productos comprados") {
@@ -92,10 +93,29 @@ struct BasketView: View {
         }
         .fullScreenCover(item: $cameraItem) { item in
             ProductCameraView(
-                onCapture: { image in savePhoto(image, for: item) },
+                onCapture: { image in reviewPhoto(image, for: item) },
                 onCancel: { cameraItem = nil }
             )
             .ignoresSafeArea()
+        }
+        .sheet(item: $photoPresentation) { presentation in
+            switch presentation {
+            case .review(let photo):
+                ProductPhotoReviewSheet(
+                    item: photo.item,
+                    image: photo.image,
+                    onCancel: { photoPresentation = nil },
+                    onRetake: { retakePhoto(for: photo.item) },
+                    onUse: { savePhoto(photo.image, for: photo.item) }
+                )
+            case .saved(let photo):
+                ProductPhotoPreviewSheet(
+                    item: photo.item,
+                    image: photo.image,
+                    onClose: { photoPresentation = nil },
+                    onChange: { retakePhoto(for: photo.item) }
+                )
+            }
         }
     }
 
@@ -263,8 +283,31 @@ struct BasketView: View {
         cameraItem = item
     }
 
+    private func handlePhotoTap(for item: BasketItem) {
+        if let url = store.photoURL(for: item),
+           let image = UIImage(contentsOfFile: url.path) {
+            photoPresentation = .saved(ProductPhoto(item: item, image: image))
+        } else {
+            openCamera(for: item)
+        }
+    }
+
+    private func reviewPhoto(_ image: UIImage, for item: BasketItem) {
+        cameraItem = nil
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) {
+            photoPresentation = .review(ProductPhoto(item: item, image: image))
+        }
+    }
+
+    private func retakePhoto(for item: BasketItem) {
+        photoPresentation = nil
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) {
+            openCamera(for: item)
+        }
+    }
+
     private func savePhoto(_ image: UIImage, for item: BasketItem) {
-        defer { cameraItem = nil }
+        photoPresentation = nil
         guard let data = image.jpegData(compressionQuality: 0.88) else {
             cameraError = "No se pudo preparar la fotografía."
             return
@@ -334,7 +377,7 @@ private struct BasketRow: View {
             .accessibilityLabel(
                 store.photoURL(for: item) == nil
                     ? "Hacer una foto de \(item.name)"
-                    : "Cambiar la foto de \(item.name)"
+                    : "Ver la foto de \(item.name)"
             )
 
             Button(role: .destructive) {
@@ -351,6 +394,121 @@ private struct BasketRow: View {
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
         .auriCard()
+    }
+}
+
+private struct ProductPhoto: Identifiable {
+    let id = UUID()
+    let item: BasketItem
+    let image: UIImage
+}
+
+private enum ProductPhotoPresentation: Identifiable {
+    case review(ProductPhoto)
+    case saved(ProductPhoto)
+
+    var id: UUID {
+        switch self {
+        case .review(let photo), .saved(let photo):
+            return photo.id
+        }
+    }
+}
+
+private struct ProductPhotoReviewSheet: View {
+    let item: BasketItem
+    let image: UIImage
+    let onCancel: () -> Void
+    let onRetake: () -> Void
+    let onUse: () -> Void
+
+    var body: some View {
+        NavigationStack {
+            GeometryReader { proxy in
+                VStack(spacing: 15) {
+                    Text("¿Ha quedado bien o quieres repetirla?")
+                        .font(.subheadline)
+                        .foregroundStyle(AuriColors.muted)
+                        .multilineTextAlignment(.center)
+
+                    productImage(maxHeight: max(220, proxy.size.height - 180))
+
+                    HStack(spacing: 9) {
+                        Button("Cancelar", role: .cancel, action: onCancel)
+                            .buttonStyle(.bordered)
+
+                        Button("Repetir", action: onRetake)
+                            .buttonStyle(.bordered)
+                            .tint(AuriColors.purple)
+
+                        Button("Usar", action: onUse)
+                            .buttonStyle(.borderedProminent)
+                            .tint(AuriColors.purple)
+                    }
+                    .font(.subheadline.bold())
+                    .controlSize(.large)
+                    .frame(maxWidth: .infinity)
+                }
+                .padding(.horizontal, 18)
+                .padding(.vertical, 12)
+            }
+            .navigationTitle("Revisa la foto")
+            .navigationBarTitleDisplayMode(.inline)
+        }
+        .presentationDetents([.large])
+        .presentationDragIndicator(.visible)
+        .interactiveDismissDisabled()
+    }
+
+    private func productImage(maxHeight: CGFloat) -> some View {
+        Image(uiImage: image)
+            .resizable()
+            .scaledToFit()
+            .frame(maxWidth: .infinity, maxHeight: maxHeight)
+            .background(Color.black.opacity(0.9))
+            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .accessibilityLabel("Fotografía recién hecha de \(item.name)")
+    }
+}
+
+private struct ProductPhotoPreviewSheet: View {
+    let item: BasketItem
+    let image: UIImage
+    let onClose: () -> Void
+    let onChange: () -> Void
+
+    var body: some View {
+        NavigationStack {
+            GeometryReader { proxy in
+                VStack(spacing: 15) {
+                    Image(uiImage: image)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(maxWidth: .infinity, maxHeight: max(240, proxy.size.height - 120))
+                        .background(Color.black.opacity(0.9))
+                        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                        .accessibilityLabel("Fotografía ampliada de \(item.name)")
+
+                    HStack(spacing: 10) {
+                        Button("Cerrar", role: .cancel, action: onClose)
+                            .buttonStyle(.bordered)
+
+                        Button("Cambiar foto", action: onChange)
+                            .buttonStyle(.borderedProminent)
+                            .tint(AuriColors.purple)
+                    }
+                    .font(.subheadline.bold())
+                    .controlSize(.large)
+                    .frame(maxWidth: .infinity)
+                }
+                .padding(.horizontal, 18)
+                .padding(.vertical, 12)
+            }
+            .navigationTitle(item.name)
+            .navigationBarTitleDisplayMode(.inline)
+        }
+        .presentationDetents([.large])
+        .presentationDragIndicator(.visible)
     }
 }
 

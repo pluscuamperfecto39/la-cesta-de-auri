@@ -123,7 +123,7 @@ private struct BrandHeader: View {
 
             VStack(alignment: .leading, spacing: 3) {
                 Text("La Cesta de Auri")
-                    .font(.custom("SnellRoundhand-Bold", size: 27, relativeTo: .title2))
+                    .font(.custom("SnellRoundhand-Bold", size: 30, relativeTo: .title2))
                     .foregroundStyle(AuriColors.purple)
                     .minimumScaleFactor(0.72)
                     .lineLimit(1)
