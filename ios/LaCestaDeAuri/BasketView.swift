@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct BasketView: View {
     @EnvironmentObject private var store: AuriStore
@@ -10,6 +11,8 @@ struct BasketView: View {
     @State private var category = "Otros"
     @State private var quantity = "1 ud."
     @State private var showingClearConfirmation = false
+    @State private var cameraItem: BasketItem?
+    @State private var cameraError: String?
     @FocusState private var productFocused: Bool
 
     private var pending: [BasketItem] {
@@ -37,7 +40,7 @@ struct BasketView: View {
                     listHeader
 
                     ForEach(pending) { item in
-                        BasketRow(item: item)
+                        BasketRow(item: item, onPhoto: { openCamera(for: $0) })
                     }
 
                     if !purchased.isEmpty {
@@ -50,7 +53,7 @@ struct BasketView: View {
                         .padding(.top, 8)
 
                         ForEach(purchased) { item in
-                            BasketRow(item: item)
+                            BasketRow(item: item, onPhoto: { openCamera(for: $0) })
                         }
 
                         Button("Limpiar productos comprados") {
@@ -75,6 +78,24 @@ struct BasketView: View {
             Button("Limpiar", role: .destructive, action: store.clearPurchased)
         } message: {
             Text("Se quitarán de esta cesta, pero seguirán contando entre tus productos frecuentes.")
+        }
+        .alert(
+            "Cámara",
+            isPresented: Binding(
+                get: { cameraError != nil },
+                set: { if !$0 { cameraError = nil } }
+            )
+        ) {
+            Button("Aceptar", role: .cancel) { cameraError = nil }
+        } message: {
+            Text(cameraError ?? "No se pudo usar la cámara.")
+        }
+        .fullScreenCover(item: $cameraItem) { item in
+            ProductCameraView(
+                onCapture: { image in savePhoto(image, for: item) },
+                onCancel: { cameraItem = nil }
+            )
+            .ignoresSafeArea()
         }
     }
 
@@ -232,11 +253,34 @@ struct BasketView: View {
         quantity = "1 ud."
         productFocused = false
     }
+
+    private func openCamera(for item: BasketItem) {
+        guard UIImagePickerController.isSourceTypeAvailable(.camera) else {
+            cameraError = "La cámara no está disponible en este dispositivo. Pruébalo en un iPhone real."
+            return
+        }
+        productFocused = false
+        cameraItem = item
+    }
+
+    private func savePhoto(_ image: UIImage, for item: BasketItem) {
+        defer { cameraItem = nil }
+        guard let data = image.jpegData(compressionQuality: 0.88) else {
+            cameraError = "No se pudo preparar la fotografía."
+            return
+        }
+        do {
+            try store.setBasketPhoto(data, for: item.id)
+        } catch {
+            cameraError = "No se pudo guardar la fotografía en el iPhone."
+        }
+    }
 }
 
 private struct BasketRow: View {
     @EnvironmentObject private var store: AuriStore
     let item: BasketItem
+    let onPhoto: (BasketItem) -> Void
 
     var body: some View {
         HStack(spacing: 11) {
@@ -263,6 +307,36 @@ private struct BasketRow: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
 
+            Button {
+                onPhoto(item)
+            } label: {
+                Group {
+                    if let url = store.photoURL(for: item),
+                       let image = UIImage(contentsOfFile: url.path) {
+                        Image(uiImage: image)
+                            .resizable()
+                            .scaledToFill()
+                    } else {
+                        Image(systemName: "camera.fill")
+                            .font(.system(size: 19, weight: .semibold))
+                            .foregroundStyle(AuriColors.purpleDark)
+                    }
+                }
+                .frame(width: 50, height: 50)
+                .background(AuriColors.navBlue)
+                .clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 13, style: .continuous)
+                        .stroke(AuriColors.line, lineWidth: 1)
+                }
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(
+                store.photoURL(for: item) == nil
+                    ? "Hacer una foto de \(item.name)"
+                    : "Cambiar la foto de \(item.name)"
+            )
+
             Button(role: .destructive) {
                 store.removeBasketItem(item.id)
             } label: {
@@ -277,5 +351,48 @@ private struct BasketRow: View {
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
         .auriCard()
+    }
+}
+
+private struct ProductCameraView: UIViewControllerRepresentable {
+    let onCapture: (UIImage) -> Void
+    let onCancel: () -> Void
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(parent: self)
+    }
+
+    func makeUIViewController(context: Context) -> UIImagePickerController {
+        let picker = UIImagePickerController()
+        picker.sourceType = .camera
+        picker.cameraCaptureMode = .photo
+        picker.allowsEditing = false
+        picker.delegate = context.coordinator
+        return picker
+    }
+
+    func updateUIViewController(_ uiViewController: UIImagePickerController, context: Context) {}
+
+    final class Coordinator: NSObject, UINavigationControllerDelegate, UIImagePickerControllerDelegate {
+        private let parent: ProductCameraView
+
+        init(parent: ProductCameraView) {
+            self.parent = parent
+        }
+
+        func imagePickerController(
+            _ picker: UIImagePickerController,
+            didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]
+        ) {
+            guard let image = info[.originalImage] as? UIImage else {
+                parent.onCancel()
+                return
+            }
+            parent.onCapture(image)
+        }
+
+        func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
+            parent.onCancel()
+        }
     }
 }

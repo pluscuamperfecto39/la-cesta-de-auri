@@ -9,6 +9,7 @@ final class AuriStore: ObservableObject {
     @Published private(set) var futurePurchases: [FuturePurchase] = []
 
     private let defaults: UserDefaults
+    private let photoDirectory: URL
     private let encoder = JSONEncoder()
     private let decoder = JSONDecoder()
 
@@ -20,6 +21,13 @@ final class AuriStore: ObservableObject {
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
+        photoDirectory = FileManager.default
+            .urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("ProductPhotos", isDirectory: true)
+        try? FileManager.default.createDirectory(
+            at: photoDirectory,
+            withIntermediateDirectories: true
+        )
         loadAll()
     }
 
@@ -70,14 +78,45 @@ final class AuriStore: ObservableObject {
         saveBasket()
     }
 
+    func photoURL(for item: BasketItem) -> URL? {
+        guard let filename = safePhotoFilename(item.photoFilename) else { return nil }
+        let url = photoDirectory.appendingPathComponent(filename, isDirectory: false)
+        return FileManager.default.fileExists(atPath: url.path) ? url : nil
+    }
+
+    func setBasketPhoto(_ jpegData: Data, for id: UUID) throws {
+        guard let index = basket.firstIndex(where: { $0.id == id }) else { return }
+        try FileManager.default.createDirectory(
+            at: photoDirectory,
+            withIntermediateDirectories: true
+        )
+
+        let previousFilename = basket[index].photoFilename
+        let filename = "product_\(id.uuidString)_\(UUID().uuidString).jpg"
+        let destination = photoDirectory.appendingPathComponent(filename, isDirectory: false)
+        try jpegData.write(to: destination, options: .atomic)
+
+        basket[index].photoFilename = filename
+        saveBasket()
+        deletePhoto(previousFilename)
+    }
+
     func removeBasketItem(_ id: UUID) {
+        let photos = basket
+            .filter { $0.id == id }
+            .compactMap(\.photoFilename)
         basket.removeAll { $0.id == id }
         saveBasket()
+        photos.forEach { deletePhoto($0) }
     }
 
     func clearPurchased() {
+        let photos = basket
+            .filter(\.isPurchased)
+            .compactMap(\.photoFilename)
         basket.removeAll { $0.isPurchased }
         saveBasket()
+        photos.forEach { deletePhoto($0) }
     }
 
     func addFrequentToBasket(_ item: FrequentItem) {
@@ -157,6 +196,20 @@ final class AuriStore: ObservableObject {
 
     private func saveFuture() {
         save(futurePurchases, key: Key.future)
+    }
+
+    private func safePhotoFilename(_ filename: String?) -> String? {
+        guard let filename, !filename.isEmpty else { return nil }
+        guard URL(fileURLWithPath: filename).lastPathComponent == filename else { return nil }
+        guard filename.hasPrefix("product_"), filename.hasSuffix(".jpg") else { return nil }
+        return filename
+    }
+
+    private func deletePhoto(_ filename: String?) {
+        guard let filename = safePhotoFilename(filename) else { return }
+        try? FileManager.default.removeItem(
+            at: photoDirectory.appendingPathComponent(filename, isDirectory: false)
+        )
     }
 
     private static func cleanName(_ value: String) -> String {

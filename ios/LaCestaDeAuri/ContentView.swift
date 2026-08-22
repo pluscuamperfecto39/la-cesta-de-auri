@@ -114,35 +114,33 @@ private struct ShareItem: Identifiable {
 
 private struct BrandHeader: View {
     var body: some View {
-        HStack(spacing: 12) {
-            Image(systemName: "basket.fill")
-                .font(.system(size: 25, weight: .semibold))
-                .foregroundStyle(AuriColors.purpleDark)
-                .frame(width: 52, height: 52)
-                .background(AuriColors.lavender)
-                .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        HStack(spacing: 9) {
+            Image("AuriCharacter")
+                .resizable()
+                .scaledToFit()
+                .frame(width: 66, height: 72)
+                .accessibilityLabel("Auri, Reina de Corazones")
 
             VStack(alignment: .leading, spacing: 3) {
-                Text("LA CESTA DE AURI")
-                    .font(.system(size: 19, weight: .black, design: .rounded))
-                    .tracking(0.8)
+                Text("La Cesta de Auri")
+                    .font(.custom("SnellRoundhand-Bold", size: 27, relativeTo: .title2))
                     .foregroundStyle(AuriColors.purple)
-                    .minimumScaleFactor(0.78)
+                    .minimumScaleFactor(0.72)
                     .lineLimit(1)
 
                 Text("Compra con calma, recuerda con cariño")
                     .font(.caption)
                     .fontWeight(.semibold)
                     .foregroundStyle(AuriColors.muted)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.72)
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
             }
 
             Spacer(minLength: 0)
         }
         .padding(.horizontal, 18)
-        .padding(.top, 10)
-        .padding(.bottom, 12)
+        .padding(.top, 8)
+        .padding(.bottom, 10)
         .background(AuriColors.background)
     }
 }

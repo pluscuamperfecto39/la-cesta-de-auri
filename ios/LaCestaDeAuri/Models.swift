@@ -5,6 +5,7 @@ struct BasketItem: Identifiable, Codable, Equatable {
     var name: String
     var category: String
     var quantity: String
+    var photoFilename: String? = nil
     var isPurchased: Bool = false
     var countedAsFrequent: Bool = false
 }

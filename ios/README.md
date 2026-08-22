@@ -21,6 +21,7 @@ completar los datos de privacidad y generar el archivo desde **Product > Archive
 ## Qué ya está implementado
 
 - Cesta con nombre, cantidad, categoría y productos tachables.
+- Cámara para fotografiar productos, sustituir sus fotos y ver miniaturas en la cesta.
 - Productos frecuentes aprendidos al marcar compras.
 - Lista «Para luego» con fecha, hora y notificaciones locales.
 - Importación desde Archivos y apertura directa de archivos `.auri`.
@@ -28,12 +29,17 @@ completar los datos de privacidad y generar el archivo desde **Product > Archive
 - Exportación de la cesta como archivo `.auri` mediante la hoja de compartir de iOS.
 - Persistencia local sin cuentas ni servicios externos.
 - Diseño morado y celeste adaptado a las zonas seguras del iPhone.
+- Cabecera cursiva con el personaje de Auri, coherente con la versión Android.
 
 ## Compatibilidad de las listas
 
 El tipo registrado en iOS es `com.auri.cesta.list`, con extensión `.auri` y MIME
 `application/vnd.auri.cesta-list+json`. La especificación completa está en
 `docs/FORMATO-AURI.md`.
+
+Las fotos permanecen en el almacenamiento privado del iPhone y se eliminan cuando
+se borra el producto. No se incluyen en el archivo `.auri`, para conservar la
+compatibilidad con versiones anteriores y con Android.
 
 ## Límite de Windows
 
