@@ -15,7 +15,7 @@ Aplicación de lista de la compra para Android y iPhone, creada para funcionar s
 
 ## Instalar el APK
 
-El archivo terminado está en `dist/La-Cesta-de-Auri-v1.8.0.apk`. En el móvil, abre el archivo y autoriza temporalmente la instalación desde esa fuente si Android lo solicita. En Android 13 o posterior, acepta el permiso de notificaciones para recibir recordatorios.
+El archivo terminado está en `dist/La-Cesta-de-Auri-v1.8.1.apk`. En el móvil, abre el archivo y autoriza temporalmente la instalación desde esa fuente si Android lo solicita. En Android 13 o posterior, acepta el permiso de notificaciones para recibir recordatorios.
 
 ## Añadir el widget en Android
 
@@ -31,7 +31,7 @@ la cesta en la aplicación.
 - Paquete: `com.auri.cesta`
 - Android mínimo: 6.0 (API 23)
 - Android objetivo: API 36
-- Versión: 1.8.0
+- Versión: 1.8.1
 - Lenguaje: Java, sin servicios externos
 
 Se incluye Gradle Wrapper para abrir y compilar el proyecto con Android Studio o desde terminal.

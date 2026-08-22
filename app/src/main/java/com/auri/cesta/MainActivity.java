@@ -141,9 +141,14 @@ public class MainActivity extends Activity {
         name.setTypeface(Typeface.create("cursive", Typeface.BOLD_ITALIC));
         name.setLetterSpacing(0.01f);
         brand.addView(name);
-        brand.addView(text("Compra con calma, recuerda con cariño", 12, Gravity.START, MUTED, false));
+        TextView subtitle = text("Compra con calma, recuerda con cariño", 12, Gravity.START, MUTED, false);
+        subtitle.setMaxLines(2);
+        brand.addView(subtitle);
         header.addView(brand, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
-        root.addView(header, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(90)));
+        header.setMinimumHeight(dp(90));
+        root.addView(header, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT));
 
         content = new FrameLayout(this);
         root.addView(content, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
