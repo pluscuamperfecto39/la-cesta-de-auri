@@ -32,13 +32,13 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:fontFamily="sans-serif"
-                android:letterSpacing="0.06"
+                android:fontFamily="cursive"
+                android:letterSpacing="0.01"
                 android:maxLines="1"
                 android:text="@string/widget_title"
                 android:textColor="@color/white"
-                android:textSize="15sp"
-                android:textStyle="bold" />
+                android:textSize="20sp"
+                android:textStyle="bold|italic" />
 
             <TextView
                 android:id="@+id/widget_count"

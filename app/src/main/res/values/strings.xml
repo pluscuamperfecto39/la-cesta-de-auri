@@ -7,7 +7,7 @@
     <string name="notify_at_time">Avisarme a esa hora</string>
     <string name="widget_name">Mi cesta de Auri</string>
     <string name="widget_description">Consulta tu lista de la compra desde la pantalla de inicio</string>
-    <string name="widget_title">MI CESTA DE AURI</string>
+    <string name="widget_title">La Cesta de Auri</string>
     <string name="widget_open">Toca para abrir la aplicación</string>
     <string name="widget_empty">Tu cesta está vacía</string>
     <string name="widget_all_bought">✓ Todo comprado</string>

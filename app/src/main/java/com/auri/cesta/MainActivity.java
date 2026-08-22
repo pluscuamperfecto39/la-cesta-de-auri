@@ -134,8 +134,9 @@ public class MainActivity extends Activity {
         LinearLayout brand = new LinearLayout(this);
         brand.setOrientation(LinearLayout.VERTICAL);
         brand.setPadding(dp(12), 0, 0, 0);
-        TextView name = text("LA CESTA DE AURI", 18, Gravity.START, PURPLE, true);
-        name.setLetterSpacing(0.05f);
+        TextView name = text("La Cesta de Auri", 23, Gravity.START, PURPLE, false);
+        name.setTypeface(Typeface.create("cursive", Typeface.BOLD_ITALIC));
+        name.setLetterSpacing(0.01f);
         brand.addView(name);
         brand.addView(text("Compra con calma, recuerda con cariño", 12, Gravity.START, MUTED, false));
         header.addView(brand, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
