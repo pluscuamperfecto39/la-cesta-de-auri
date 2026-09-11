@@ -264,14 +264,26 @@ struct BasketView: View {
     }
 
     private func addProduct() {
-        guard !product.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+        let products = splitProductNames(product)
+        guard !products.isEmpty else {
             productFocused = true
             return
         }
-        store.addBasketItem(name: product, category: category, quantity: quantity)
+        store.addBasketItems(names: products, category: category, quantity: quantity)
         product = ""
         quantity = "1 ud."
-        productFocused = false
+        DispatchQueue.main.async {
+            productFocused = true
+        }
+    }
+
+    private func splitProductNames(_ value: String) -> [String] {
+        let separators = CharacterSet.whitespacesAndNewlines
+            .union(CharacterSet(charactersIn: ",;"))
+        return value
+            .components(separatedBy: separators)
+            .map { $0.trimmingCharacters(in: .punctuationCharacters) }
+            .filter { !$0.isEmpty }
     }
 
     private func openCamera(for item: BasketItem) {

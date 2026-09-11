@@ -96,6 +96,11 @@ public final class DataStore {
     }
 
     public void saveBasket(List<BasketItem> items) {
+        prefs.edit().putString(KEY_BASKET, basketJson(items).toString()).apply();
+        BasketWidgetProvider.refreshAll(appContext);
+    }
+
+    private JSONArray basketJson(List<BasketItem> items) {
         JSONArray array = new JSONArray();
         for (BasketItem item : items) {
             JSONObject object = new JSONObject();
@@ -111,13 +116,24 @@ public final class DataStore {
             } catch (JSONException ignored) {
             }
         }
-        prefs.edit().putString(KEY_BASKET, array.toString()).apply();
-        BasketWidgetProvider.refreshAll(appContext);
+        return array;
     }
 
     public void addBasketItem(String name, String category, String quantity) {
         List<BasketItem> items = getBasket();
         items.add(0, new BasketItem(uniqueId(), tidy(name), category, tidyQuantity(quantity)));
+        saveBasket(items);
+    }
+
+    /** Añade varios productos de una vez manteniendo el orden en el que se escribieron. */
+    public void addBasketItems(List<String> names, String category, String quantity) {
+        List<BasketItem> items = getBasket();
+        for (int i = names.size() - 1; i >= 0; i--) {
+            String name = tidy(names.get(i));
+            if (!name.isEmpty()) {
+                items.add(0, new BasketItem(uniqueId(), name, category, tidyQuantity(quantity)));
+            }
+        }
         saveBasket(items);
     }
 
@@ -155,6 +171,10 @@ public final class DataStore {
     }
 
     public void saveFuture(List<FutureItem> items) {
+        prefs.edit().putString(KEY_FUTURE, futureJson(items).toString()).apply();
+    }
+
+    private JSONArray futureJson(List<FutureItem> items) {
         JSONArray array = new JSONArray();
         for (FutureItem item : items) {
             JSONObject object = new JSONObject();
@@ -167,7 +187,7 @@ public final class DataStore {
             } catch (JSONException ignored) {
             }
         }
-        prefs.edit().putString(KEY_FUTURE, array.toString()).apply();
+        return array;
     }
 
     public FutureItem addFutureItem(String title, long whenMillis, boolean notify) {
@@ -176,6 +196,56 @@ public final class DataStore {
         items.add(item);
         saveFuture(items);
         return item;
+    }
+
+    /**
+     * Traslada de una vez las compras cuya fecha ya ha llegado. La cesta y la lista
+     * futura se escriben en la misma operación para evitar que un artículo aparezca
+     * en las dos listas si el proceso se interrumpe.
+     */
+    public List<FutureItem> moveDueFutureItems(long nowMillis) {
+        List<FutureItem> future = getFuture();
+        List<FutureItem> moved = new ArrayList<>();
+        for (FutureItem item : future) {
+            if (item.whenMillis <= nowMillis) moved.add(item);
+        }
+        if (moved.isEmpty()) return moved;
+
+        List<BasketItem> basket = getBasket();
+        for (FutureItem item : moved) {
+            basket.add(0, new BasketItem(item.id, item.title, "Otros", "1 ud."));
+        }
+        future.removeIf(item -> item.whenMillis <= nowMillis);
+        saveBasketAndFuture(basket, future);
+        return moved;
+    }
+
+    /** Traslada manualmente una compra futura y devuelve el elemento trasladado. */
+    public FutureItem moveFutureToBasket(long id) {
+        List<FutureItem> future = getFuture();
+        FutureItem moved = null;
+        for (FutureItem item : future) {
+            if (item.id == id) {
+                moved = item;
+                break;
+            }
+        }
+        if (moved == null) return null;
+
+        List<BasketItem> basket = getBasket();
+        basket.add(0, new BasketItem(moved.id, moved.title, "Otros", "1 ud."));
+        FutureItem selected = moved;
+        future.removeIf(item -> item.id == selected.id);
+        saveBasketAndFuture(basket, future);
+        return moved;
+    }
+
+    private void saveBasketAndFuture(List<BasketItem> basket, List<FutureItem> future) {
+        prefs.edit()
+                .putString(KEY_BASKET, basketJson(basket).toString())
+                .putString(KEY_FUTURE, futureJson(future).toString())
+                .apply();
+        BasketWidgetProvider.refreshAll(appContext);
     }
 
     public void incrementFrequent(String name, String category) {

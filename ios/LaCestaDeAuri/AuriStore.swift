@@ -7,6 +7,7 @@ final class AuriStore: ObservableObject {
     @Published private(set) var basket: [BasketItem] = []
     @Published private(set) var frequent: [FrequentItem] = []
     @Published private(set) var futurePurchases: [FuturePurchase] = []
+    @Published private(set) var completionCelebration = 0
 
     private let defaults: UserDefaults
     private let photoDirectory: URL
@@ -29,6 +30,7 @@ final class AuriStore: ObservableObject {
             withIntermediateDirectories: true
         )
         loadAll()
+        moveDueFuturePurchases()
     }
 
     var purchasedCount: Int {
@@ -54,6 +56,22 @@ final class AuriStore: ObservableObject {
         saveBasket()
     }
 
+    func addBasketItems(names: [String], category: String, quantity: String) {
+        let cleanItems = names.compactMap { name -> BasketItem? in
+            let cleanName = Self.cleanName(name)
+            guard !cleanName.isEmpty else { return nil }
+            return BasketItem(
+                name: cleanName,
+                category: AuriCategories.safe(category),
+                quantity: Self.cleanQuantity(quantity)
+            )
+        }
+        guard !cleanItems.isEmpty else { return }
+
+        basket.insert(contentsOf: cleanItems, at: 0)
+        saveBasket()
+    }
+
     func importBasketItems(_ imported: [BasketItem]) {
         let cleanItems = imported.map {
             BasketItem(
@@ -69,6 +87,7 @@ final class AuriStore: ObservableObject {
 
     func toggleBasketItem(_ id: UUID) {
         guard let index = basket.firstIndex(where: { $0.id == id }) else { return }
+        let wasComplete = !basket.isEmpty && basket.allSatisfy(\.isPurchased)
         basket[index].isPurchased.toggle()
 
         if basket[index].isPurchased && !basket[index].countedAsFrequent {
@@ -76,6 +95,10 @@ final class AuriStore: ObservableObject {
             incrementFrequent(name: basket[index].name, category: basket[index].category)
         }
         saveBasket()
+
+        if !wasComplete && basket.allSatisfy(\.isPurchased) {
+            completionCelebration += 1
+        }
     }
 
     func photoURL(for item: BasketItem) -> URL? {
@@ -150,6 +173,34 @@ final class AuriStore: ObservableObject {
     func moveFutureToBasket(_ item: FuturePurchase) {
         addBasketItem(name: item.title, category: "Otros", quantity: "1 ud.")
         removeFuturePurchase(item.id)
+    }
+
+    /// Pasa a la cesta principal todo lo que ya ha alcanzado su fecha programada.
+    @discardableResult
+    func moveDueFuturePurchases(referenceDate: Date = Date()) -> Int {
+        let due = futurePurchases.filter { $0.date <= referenceDate }
+        guard !due.isEmpty else { return 0 }
+
+        for item in due {
+            basket.insert(
+                BasketItem(
+                    id: item.id,
+                    name: item.title,
+                    category: "Otros",
+                    quantity: "1 ud."
+                ),
+                at: 0
+            )
+        }
+        futurePurchases.removeAll { $0.date <= referenceDate }
+        saveBasket()
+        saveFuture()
+
+        let identifiers = due.map { $0.id.uuidString }
+        let center = UNUserNotificationCenter.current()
+        center.removePendingNotificationRequests(withIdentifiers: identifiers)
+        center.removeDeliveredNotifications(withIdentifiers: identifiers)
+        return due.count
     }
 
     private func incrementFrequent(name: String, category: String) {

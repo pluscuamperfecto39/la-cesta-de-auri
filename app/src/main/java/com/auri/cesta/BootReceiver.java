@@ -12,8 +12,10 @@ public class BootReceiver extends BroadcastReceiver {
             return;
         }
         DataStore store = new DataStore(context);
+        long now = System.currentTimeMillis();
+        store.moveDueFutureItems(now);
         for (DataStore.FutureItem item : store.getFuture()) {
-            if (item.notify && item.whenMillis > System.currentTimeMillis()) {
+            if (item.whenMillis > now) {
                 ReminderScheduler.schedule(context, item);
             }
         }

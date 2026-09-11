@@ -18,6 +18,8 @@ import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.net.Uri;
 import android.provider.MediaStore;
 import android.text.InputType;
@@ -89,6 +91,33 @@ public class MainActivity extends Activity {
     private int currentTab;
     private long pendingPhotoItemId = -1L;
     private File pendingPhotoFile;
+    private final Handler uiHandler = new Handler(Looper.getMainLooper());
+    private long scheduledFutureAt = -1L;
+    private ImageView auriMark;
+    private FrameLayout auriMagicLayer;
+    private int auriBurstsRemaining;
+
+    private final Runnable futurePromotionCheck = () -> {
+        long expectedAt = scheduledFutureAt;
+        List<DataStore.FutureItem> moved = moveDuePurchasesToBasket();
+        boolean reachedExpectedDate = expectedAt > 0L && System.currentTimeMillis() >= expectedAt;
+        if (content != null && (!moved.isEmpty() || reachedExpectedDate)) {
+            showTab(currentTab);
+        }
+        scheduleNextFuturePromotion();
+    };
+
+    private final Runnable auriCelebrationBurst = new Runnable() {
+        @Override
+        public void run() {
+            if (auriBurstsRemaining <= 0) return;
+            playAuriMagic();
+            auriBurstsRemaining--;
+            if (auriBurstsRemaining > 0) {
+                uiHandler.postDelayed(this, 1450L);
+            }
+        }
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -99,6 +128,10 @@ public class MainActivity extends Activity {
             if (!pendingPath.isEmpty()) pendingPhotoFile = new File(pendingPath);
         }
         store = new DataStore(this);
+        moveDuePurchasesToBasket();
+        for (DataStore.FutureItem item : store.getFuture()) {
+            ReminderScheduler.schedule(this, item);
+        }
         ReminderReceiver.createChannel(this);
         getWindow().setStatusBarColor(CREAM);
         getWindow().setNavigationBarColor(WHITE);
@@ -106,6 +139,23 @@ public class MainActivity extends Activity {
         buildShell();
         showTab(getIntent().getIntExtra("tab", 0));
         handleIncomingList(getIntent());
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        List<DataStore.FutureItem> moved = moveDuePurchasesToBasket();
+        if (content != null && !moved.isEmpty()) showTab(currentTab);
+        scheduleNextFuturePromotion();
+    }
+
+    @Override
+    protected void onPause() {
+        uiHandler.removeCallbacks(futurePromotionCheck);
+        uiHandler.removeCallbacks(auriCelebrationBurst);
+        auriBurstsRemaining = 0;
+        if (auriMark != null) auriMark.animate().cancel();
+        super.onPause();
     }
 
     @Override
@@ -150,11 +200,17 @@ public class MainActivity extends Activity {
         header.setGravity(Gravity.CENTER_VERTICAL);
         header.setPadding(dp(18), dp(11), dp(18), dp(10));
 
-        ImageView mark = new ImageView(this);
-        mark.setImageResource(R.drawable.auri_queen_cutout);
-        mark.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
-        mark.setContentDescription(getString(R.string.character_description));
-        header.addView(mark, new LinearLayout.LayoutParams(dp(66), dp(70)));
+        auriMagicLayer = new FrameLayout(this);
+        auriMagicLayer.setClipChildren(false);
+        auriMagicLayer.setClipToPadding(false);
+        auriMark = new ImageView(this);
+        auriMark.setImageResource(R.drawable.auri_queen_cutout);
+        auriMark.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
+        auriMark.setContentDescription(getString(R.string.character_description));
+        FrameLayout.LayoutParams markParams = new FrameLayout.LayoutParams(dp(66), dp(70));
+        markParams.gravity = Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL;
+        auriMagicLayer.addView(auriMark, markParams);
+        header.addView(auriMagicLayer, new LinearLayout.LayoutParams(dp(76), dp(78)));
 
         LinearLayout brand = new LinearLayout(this);
         brand.setOrientation(LinearLayout.VERTICAL);
@@ -164,7 +220,7 @@ public class MainActivity extends Activity {
         name.setLetterSpacing(0.01f);
         name.setSingleLine(true);
         brand.addView(name);
-        TextView subtitle = text("Compra con calma, recuerda con cariño", 12, Gravity.START, MUTED, false);
+        TextView subtitle = text("Estoy ya hasta el mismísimo !!", 12, Gravity.START, MUTED, false);
         subtitle.setMaxLines(2);
         brand.addView(subtitle);
         header.addView(brand, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
@@ -266,6 +322,7 @@ public class MainActivity extends Activity {
         addRow.setGravity(Gravity.CENTER_VERTICAL);
         addRow.setPadding(0, dp(9), 0, 0);
         EditText product = input("Ej. Tomates, arroz, jabón…");
+        product.setTag("product_input");
         product.setImeOptions(EditorInfo.IME_ACTION_DONE);
         addRow.addView(product, new LinearLayout.LayoutParams(0, dp(56), 1));
         Button add = primaryButton("+  Añadir");
@@ -294,10 +351,18 @@ public class MainActivity extends Activity {
                 product.requestFocus();
                 return;
             }
-            store.addBasketItem(value, category.getSelectedItem().toString(), quantity.getText().toString());
-            hideKeyboard(product);
-            Toast.makeText(this, "Añadido a tu cesta", Toast.LENGTH_SHORT).show();
-            renderHomeInPlace();
+            List<String> products = splitProductNames(value);
+            if (products.isEmpty()) {
+                product.setError("Escribe un producto");
+                product.requestFocus();
+                return;
+            }
+            store.addBasketItems(products, category.getSelectedItem().toString(), quantity.getText().toString());
+            String message = products.size() == 1
+                    ? "Añadido a tu cesta"
+                    : products.size() + " productos añadidos a tu cesta";
+            Toast.makeText(this, message, Toast.LENGTH_SHORT).show();
+            renderHomeInPlace(true);
         };
         add.setOnClickListener(addAction);
         product.setOnEditorActionListener((view, actionId, event) -> {
@@ -400,9 +465,21 @@ public class MainActivity extends Activity {
                     break;
                 }
             }
+            boolean completedNow = checked && !all.isEmpty();
+            for (DataStore.BasketItem saved : all) {
+                if (!saved.checked) {
+                    completedNow = false;
+                    break;
+                }
+            }
             store.saveBasket(all);
-            if (checked) Toast.makeText(this, "¡Uno menos!", Toast.LENGTH_SHORT).show();
+            if (completedNow) {
+                Toast.makeText(this, "¡Lista completada!", Toast.LENGTH_SHORT).show();
+            } else if (checked) {
+                Toast.makeText(this, "¡Uno menos!", Toast.LENGTH_SHORT).show();
+            }
             renderHomeInPlace();
+            if (completedNow) startAuriCompletionCelebration();
         });
         return row;
     }
@@ -501,7 +578,7 @@ public class MainActivity extends Activity {
         hero.setBackground(gradient(VIOLET, PURPLE, 24));
         hero.addView(text("TENGO QUE COMPRAR", 11, Gravity.START, LAVENDER, true));
         hero.addView(text("Que no se te escape nada", 24, Gravity.START, WHITE, true), marginTop(5));
-        hero.addView(text("Guarda una compra futura y Auri te avisará.", 14, Gravity.START, Color.rgb(255, 237, 232), false), marginTop(6));
+        hero.addView(text("Al llegar la fecha pasará sola a tu cesta.", 14, Gravity.START, Color.rgb(255, 237, 232), false), marginTop(6));
         Button plan = lightButton("+  Planear una compra");
         plan.setOnClickListener(view -> showFutureDialog());
         hero.addView(plan, sizedTop(ViewGroup.LayoutParams.MATCH_PARENT, 49, 16));
@@ -545,9 +622,11 @@ public class MainActivity extends Activity {
         actions.setPadding(0, dp(11), 0, 0);
         TextView toBasket = pill("Pasar a mi cesta", WHITE, PURPLE);
         toBasket.setOnClickListener(view -> {
-            store.addBasketItem(item.title, "Otros", "1 ud.");
-            removeFuture(item.id);
-            Toast.makeText(this, "Pasado a tu cesta", Toast.LENGTH_SHORT).show();
+            DataStore.FutureItem moved = store.moveFutureToBasket(item.id);
+            ReminderScheduler.cancel(this, item.id);
+            scheduleNextFuturePromotion();
+            if (moved != null) Toast.makeText(this, "Pasado a tu cesta", Toast.LENGTH_SHORT).show();
+            showTab(2);
         });
         actions.addView(toBasket);
         card.addView(actions);
@@ -587,7 +666,7 @@ public class MainActivity extends Activity {
         alarm.setChecked(true);
         alarm.setButtonTintList(ColorStateList.valueOf(PURPLE));
         form.addView(alarm, sizedTop(ViewGroup.LayoutParams.MATCH_PARENT, 54, 8));
-        form.addView(text("El aviso funciona aunque cierres la aplicación.", 12, Gravity.START, MUTED, false));
+        form.addView(text("Pasará a tu cesta aunque desactives el aviso.", 12, Gravity.START, MUTED, false));
 
         dateButton.setOnClickListener(view -> {
             DatePickerDialog picker = new DatePickerDialog(this, (DatePicker v, int year, int month, int day) -> {
@@ -627,8 +706,9 @@ public class MainActivity extends Activity {
                 DataStore.FutureItem item = store.addFutureItem(value, chosen.getTimeInMillis(), alarm.isChecked());
                 if (item.notify) {
                     askNotificationPermissionIfNeeded();
-                    ReminderScheduler.schedule(this, item);
                 }
+                ReminderScheduler.schedule(this, item);
+                scheduleNextFuturePromotion();
                 dialog.dismiss();
                 Toast.makeText(this, item.notify ? "Compra guardada con aviso" : "Compra guardada", Toast.LENGTH_SHORT).show();
                 showTab(2);
@@ -682,12 +762,113 @@ public class MainActivity extends Activity {
             if (all.get(i).id == id) all.remove(i);
         }
         store.saveFuture(all);
+        scheduleNextFuturePromotion();
         showTab(2);
     }
 
+    private List<DataStore.FutureItem> moveDuePurchasesToBasket() {
+        if (store == null) return new ArrayList<>();
+        List<DataStore.FutureItem> moved = store.moveDueFutureItems(System.currentTimeMillis());
+        for (DataStore.FutureItem item : moved) {
+            ReminderScheduler.cancel(this, item.id);
+        }
+        return moved;
+    }
+
+    private void scheduleNextFuturePromotion() {
+        uiHandler.removeCallbacks(futurePromotionCheck);
+        scheduledFutureAt = -1L;
+        if (store == null) return;
+        List<DataStore.FutureItem> future = store.getFuture();
+        if (future.isEmpty()) return;
+
+        scheduledFutureAt = future.get(0).whenMillis;
+        long untilDate = Math.max(0L, scheduledFutureAt - System.currentTimeMillis());
+        long delay = Math.min(untilDate + 250L, 24L * 60L * 60L * 1000L);
+        uiHandler.postDelayed(futurePromotionCheck, delay);
+    }
+
+    private void playAuriMagic() {
+        if (auriMark == null || auriMagicLayer == null || !auriMark.isAttachedToWindow()) return;
+
+        auriMark.setPivotX(auriMark.getWidth() * 0.78f);
+        auriMark.setPivotY(auriMark.getHeight() * 0.84f);
+        auriMark.animate()
+                .rotation(7f)
+                .translationY(-dp(1))
+                .setDuration(280L)
+                .withEndAction(() -> auriMark.animate()
+                        .rotation(0f)
+                        .translationY(0f)
+                        .setStartDelay(430L)
+                        .setDuration(360L)
+                        .start())
+                .start();
+
+        for (int i = 0; i < 5; i++) {
+            final TextView heart = text("♥", 9 + (i % 2), Gravity.CENTER, Color.rgb(205, 36, 75), true);
+            heart.setAlpha(0f);
+            heart.setScaleX(0.55f);
+            heart.setScaleY(0.55f);
+            FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(dp(17), dp(17));
+            params.leftMargin = dp(14 + (i % 3) * 4);
+            params.topMargin = dp(46 + (i % 2) * 3);
+            auriMagicLayer.addView(heart, params);
+
+            int drift = dp((i - 2) * 6);
+            int rise = dp(31 + i * 4);
+            heart.animate()
+                    .alpha(0.95f)
+                    .scaleX(1f)
+                    .scaleY(1f)
+                    .setStartDelay(150L + i * 90L)
+                    .setDuration(130L)
+                    .withEndAction(() -> heart.animate()
+                            .translationX(drift)
+                            .translationY(-rise)
+                            .alpha(0f)
+                            .scaleX(1.2f)
+                            .scaleY(1.2f)
+                            .setDuration(720L)
+                            .withEndAction(() -> auriMagicLayer.removeView(heart))
+                            .start())
+                    .start();
+        }
+    }
+
+    private void startAuriCompletionCelebration() {
+        uiHandler.removeCallbacks(auriCelebrationBurst);
+        if (auriMark != null) auriMark.animate().cancel();
+        auriBurstsRemaining = 3;
+        uiHandler.post(auriCelebrationBurst);
+    }
+
     private void renderHomeInPlace() {
+        renderHomeInPlace(false);
+    }
+
+    private void renderHomeInPlace(boolean focusProductInput) {
         content.removeAllViews();
         renderHome();
+        if (focusProductInput) {
+            EditText product = content.findViewWithTag("product_input");
+            if (product != null) {
+                product.post(() -> {
+                    product.requestFocus();
+                    InputMethodManager manager = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+                    if (manager != null) manager.showSoftInput(product, InputMethodManager.SHOW_IMPLICIT);
+                });
+            }
+        }
+    }
+
+    private List<String> splitProductNames(String value) {
+        List<String> products = new ArrayList<>();
+        for (String part : value.split("[\\s,;]+")) {
+            String clean = part.replaceAll("^[.:]+|[.:]+$", "").trim();
+            if (!clean.isEmpty()) products.add(clean);
+        }
+        return products;
     }
 
     private void shareBasketFile(List<DataStore.BasketItem> items) {

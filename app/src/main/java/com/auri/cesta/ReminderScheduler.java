@@ -6,13 +6,13 @@ import android.content.Context;
 import android.content.Intent;
 import android.os.Build;
 
-/** Programa avisos incluso con la app cerrada. */
+/** Programa el traslado a la cesta y, si corresponde, su aviso. */
 public final class ReminderScheduler {
     private ReminderScheduler() {
     }
 
     public static void schedule(Context context, DataStore.FutureItem item) {
-        if (!item.notify || item.whenMillis <= System.currentTimeMillis()) return;
+        if (item.whenMillis <= System.currentTimeMillis()) return;
 
         AlarmManager manager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
         PendingIntent pendingIntent = reminderIntent(context, item);

@@ -4,6 +4,7 @@ import UIKit
 
 struct ContentView: View {
     @EnvironmentObject private var store: AuriStore
+    @Environment(\.scenePhase) private var scenePhase
     @State private var selectedTab = 0
     @State private var showingImporter = false
     @State private var shareItem: ShareItem?
@@ -11,7 +12,7 @@ struct ContentView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            BrandHeader()
+            BrandHeader(completionTrigger: store.completionCelebration)
 
             Group {
                 switch selectedTab {
@@ -74,6 +75,14 @@ struct ContentView: View {
                 )
             }
         }
+        .onChange(of: scenePhase) { phase in
+            if phase == .active {
+                store.moveDueFuturePurchases()
+            }
+        }
+        .task(id: store.futurePurchases.first?.id) {
+            await waitForNextFuturePurchase()
+        }
     }
 
     private func shareBasket() {
@@ -89,6 +98,19 @@ struct ContentView: View {
             activeAlert = .importConfirmation(try AuriFileService.importList(from: url))
         } catch {
             activeAlert = .error(error.localizedDescription)
+        }
+    }
+
+    private func waitForNextFuturePurchase() async {
+        do {
+            while !Task.isCancelled {
+                store.moveDueFuturePurchases()
+                guard let nextDate = store.futurePurchases.first?.date else { return }
+                let seconds = min(max(0, nextDate.timeIntervalSinceNow), 24 * 60 * 60)
+                try await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
+            }
+        } catch {
+            // La tarea se reinicia automáticamente cuando cambia la próxima compra.
         }
     }
 }
@@ -113,13 +135,33 @@ private struct ShareItem: Identifiable {
 }
 
 private struct BrandHeader: View {
+    let completionTrigger: Int
+
+    @State private var wandRaised = false
+    @State private var heartBurst = 0
+
     var body: some View {
         HStack(spacing: 9) {
-            Image("AuriCharacter")
-                .resizable()
-                .scaledToFit()
-                .frame(width: 66, height: 72)
-                .accessibilityLabel("Auri, Reina de Corazones")
+            ZStack(alignment: .topLeading) {
+                Image("AuriCharacter")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 66, height: 72)
+                    .rotationEffect(
+                        .degrees(wandRaised ? 7 : 0),
+                        anchor: .bottomTrailing
+                    )
+                    .offset(y: wandRaised ? -1 : 0)
+                    .accessibilityLabel("Auri, Reina de Corazones")
+
+                if heartBurst > 0 {
+                    AuriHeartBurst()
+                        .id(heartBurst)
+                        .offset(x: 13, y: 45)
+                        .accessibilityHidden(true)
+                }
+            }
+            .frame(width: 66, height: 72)
 
             VStack(alignment: .leading, spacing: 3) {
                 Text("La Cesta de Auri")
@@ -128,7 +170,7 @@ private struct BrandHeader: View {
                     .minimumScaleFactor(0.72)
                     .lineLimit(1)
 
-                Text("Compra con calma, recuerda con cariño")
+                Text("Estoy ya hasta el mismísimo !!")
                     .font(.caption)
                     .fontWeight(.semibold)
                     .foregroundStyle(AuriColors.muted)
@@ -142,6 +184,82 @@ private struct BrandHeader: View {
         .padding(.top, 8)
         .padding(.bottom, 10)
         .background(AuriColors.background)
+        .task(id: completionTrigger) {
+            guard completionTrigger > 0 else { return }
+
+            do {
+                for burst in 0..<3 {
+                    withAnimation(.easeInOut(duration: 0.28)) {
+                        wandRaised = true
+                    }
+                    try await Task.sleep(nanoseconds: 170_000_000)
+                    heartBurst += 1
+                    try await Task.sleep(nanoseconds: 650_000_000)
+                    withAnimation(.easeInOut(duration: 0.30)) {
+                        wandRaised = false
+                    }
+                    if burst < 2 {
+                        try await Task.sleep(nanoseconds: 500_000_000)
+                    }
+                }
+            } catch {
+                wandRaised = false
+            }
+        }
+    }
+}
+
+private struct AuriHeartBurst: View {
+    private let particles: [(x: CGFloat, rise: CGFloat, delay: Double, size: CGFloat)] = [
+        (-10, 34, 0.00, 7),
+        (2, 43, 0.08, 8),
+        (13, 36, 0.16, 6),
+        (-3, 52, 0.24, 7),
+        (18, 49, 0.31, 6)
+    ]
+
+    var body: some View {
+        ZStack {
+            ForEach(particles.indices, id: \.self) { index in
+                AuriHeartParticle(
+                    horizontalDrift: particles[index].x,
+                    rise: particles[index].rise,
+                    delay: particles[index].delay,
+                    size: particles[index].size
+                )
+            }
+        }
+    }
+}
+
+private struct AuriHeartParticle: View {
+    let horizontalDrift: CGFloat
+    let rise: CGFloat
+    let delay: Double
+    let size: CGFloat
+    @State private var floating = false
+
+    var body: some View {
+        Image(systemName: "heart.fill")
+            .font(.system(size: size, weight: .bold))
+            .foregroundStyle(indexedHeartColor)
+            .scaleEffect(floating ? 1.18 : 0.55)
+            .offset(
+                x: floating ? horizontalDrift : 0,
+                y: floating ? -rise : 0
+            )
+            .opacity(floating ? 0 : 0.92)
+            .onAppear {
+                withAnimation(.easeOut(duration: 0.82).delay(delay)) {
+                    floating = true
+                }
+            }
+    }
+
+    private var indexedHeartColor: Color {
+        delay.truncatingRemainder(dividingBy: 0.16) == 0
+            ? Color(red: 0.80, green: 0.12, blue: 0.29)
+            : AuriColors.violet
     }
 }
 

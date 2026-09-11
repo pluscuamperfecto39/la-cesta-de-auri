@@ -18,7 +18,7 @@ struct FutureView: View {
                             .font(.system(size: 26, weight: .black, design: .rounded))
                             .foregroundStyle(.white)
 
-                        Text("Guarda una compra futura y Auri te avisará.")
+                        Text("Al llegar la fecha pasará sola a tu cesta.")
                             .font(.subheadline)
                             .foregroundStyle(Color.white.opacity(0.86))
                     }
@@ -166,7 +166,7 @@ private struct NewFuturePurchaseView: View {
                 Section {
                     Toggle("Avisarme con una notificación", isOn: $notificationEnabled)
                 } footer: {
-                    Text("La primera vez, el iPhone te pedirá permiso para enviar avisos.")
+                    Text("La compra pasará a tu cesta aunque no actives el aviso.")
                 }
             }
             .scrollContentBackground(.hidden)

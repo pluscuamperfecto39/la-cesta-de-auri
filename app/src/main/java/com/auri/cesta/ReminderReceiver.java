@@ -15,13 +15,16 @@ public class ReminderReceiver extends BroadcastReceiver {
 
     @Override
     public void onReceive(Context context, Intent intent) {
-        createChannel(context);
         long id = intent.getLongExtra("id", System.currentTimeMillis());
-        String title = intent.getStringExtra("title");
+        DataStore.FutureItem item = new DataStore(context).moveFutureToBasket(id);
+        if (item == null || !item.notify) return;
+
+        createChannel(context);
+        String title = item.title;
         if (title == null || title.trim().isEmpty()) title = "Una compra pendiente";
 
         Intent openApp = new Intent(context, MainActivity.class);
-        openApp.putExtra("tab", 2);
+        openApp.putExtra("tab", 0);
         openApp.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
         PendingIntent contentIntent = PendingIntent.getActivity(
                 context,
@@ -35,8 +38,8 @@ public class ReminderReceiver extends BroadcastReceiver {
                 : new Notification.Builder(context);
         builder.setSmallIcon(R.drawable.ic_notification)
                 .setContentTitle("La Cesta de Auri te recuerda")
-                .setContentText(title)
-                .setStyle(new Notification.BigTextStyle().bigText("No olvides: " + title))
+                .setContentText("Ya está en tu cesta: " + title)
+                .setStyle(new Notification.BigTextStyle().bigText("Ya está en tu cesta: " + title))
                 .setColor(Color.rgb(104, 52, 153))
                 .setAutoCancel(true)
                 .setCategory(Notification.CATEGORY_REMINDER)
