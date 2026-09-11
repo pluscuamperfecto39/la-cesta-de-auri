@@ -206,6 +206,7 @@ struct BasketView: View {
 
                 TextField("1 ud.", text: $quantity)
                     .textInputAutocapitalization(.never)
+                    .foregroundStyle(AuriColors.ink)
                     .frame(minWidth: 98, maxWidth: 98, minHeight: 50)
                     .padding(.horizontal, 12)
                     .background(AuriColors.surface)
@@ -222,6 +223,7 @@ struct BasketView: View {
     private var productField: some View {
         TextField("Ej. Tomates, arroz, jabón…", text: $product)
             .textInputAutocapitalization(.sentences)
+            .foregroundStyle(AuriColors.ink)
             .submitLabel(.done)
             .focused($productFocused)
             .onSubmit(addProduct)

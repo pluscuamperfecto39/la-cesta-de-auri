@@ -150,6 +150,7 @@ private struct NewFuturePurchaseView: View {
                 Section("¿Qué tienes que comprar?") {
                     TextField("Ej. Regalo, café, pilas…", text: $title)
                         .textInputAutocapitalization(.sentences)
+                        .foregroundStyle(AuriColors.ink)
                         .focused($titleFocused)
                 }
 

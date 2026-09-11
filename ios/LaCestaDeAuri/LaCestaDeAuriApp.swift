@@ -9,6 +9,7 @@ struct LaCestaDeAuriApp: App {
             ContentView()
                 .environmentObject(store)
                 .tint(AuriColors.purple)
+                .preferredColorScheme(.light)
         }
     }
 }
